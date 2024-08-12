@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project and Discussion Manager - Nord Theme</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" data-tab="project-list">PROJECT-LIST</button>
+            <button class="tab" data-tab="discussion-list">DISCUSSION-LIST</button>
+            <button class="tab" data-tab="topic-list">TOPIC-LIST</button>
+            <button class="tab" data-tab="discussion">DISCUSSION</button>
+            <button class="tab" data-tab="experts">EXPERTS</button>
+            <button class="tab" data-tab="settings">SETTINGS</button>
+        </div>
+
+        <div id="project-list" class="tab-content active">
+            <button class="add-new" data-modal="new-project-modal">Add New Project</button>
+            <div id="projects-container"></div>
+        </div>
+
+        <div id="discussion-list" class="tab-content">
+            <div id="discussions-container"></div>
+        </div>
+
+        <div id="topic-list" class="tab-content">
+            <p>Topic List (To be implemented)</p>
+        </div>
+
+        <div id="discussion" class="tab-content">
+            <div id="discussion-content"></div>
+        </div>
+
+        <div id="experts" class="tab-content">
+            <p>Experts (To be implemented)</p>
+        </div>
+
+        <div id="settings" class="tab-content">
+            <p>Settings (To be implemented)</p>
+        </div>
+    </div>
+
+    <div id="new-project-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>New Project</h2>
+            <input type="text" id="new-project-name" placeholder="Project Name">
+            <textarea id="new-project-summary" placeholder="Project Summary"></textarea>
+            <button id="create-project">Create Project</button>
+        </div>
+    </div>
+
+    <div id="edit-project-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Edit Project</h2>
+            <input type="text" id="edit-project-name" placeholder="Project Name">
+            <textarea id="edit-project-summary" placeholder="Project Summary"></textarea>
+            <button id="update-project">Update Project</button>
+        </div>
+    </div>
+
+    <div id="new-discussion-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>New Discussion</h2>
+            <input type="text" id="new-discussion-title" placeholder="Discussion Title">
+            <button id="create-discussion">Create Discussion</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

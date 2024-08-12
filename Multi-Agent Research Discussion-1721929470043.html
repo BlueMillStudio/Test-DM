@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Research Discussion</title>
+    <link href="https://unpkg.com/nes.css@latest/css/nes.min.css" rel="stylesheet" />
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #f0f0f0;
+            padding: 20px;
+        }
+        #sandbox {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, auto);
+            grid-gap: 20px;
+            margin-bottom: 20px;
+        }
+        .agent-section {
+            background-color: #fff;
+            border: 2px solid #000;
+            padding: 10px;
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+            transition: background-color 0.3s ease;
+        }
+        .agent-section.speaking {
+            background-color: #ffffcc;
+        }
+        .director-section {
+            grid-column: 2;
+            grid-row: 1 / span 2;
+            height: 620px;
+        }
+        .agent {
+            font-size: 48px;
+            text-align: center;
+        }
+        .chat-bubble {
+            background-color: #fff;
+            border: 2px solid #000;
+            border-radius: 15px;
+            padding: 10px;
+            word-wrap: break-word;
+            margin-top: 10px;
+            height: 180px;
+            overflow-y: auto;
+            font-size: 16px;
+        }
+        .agent-info {
+            font-size: 14px;
+            text-align: center;
+            margin-top: 5px;
+        }
+        #textSizeControl {
+            margin-top: 20px;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        #notes {
+            margin-top: 20px;
+            background-color: #fff;
+            border: 2px solid #000;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+        }
+        #userInput {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="nes-container with-title">
+        <h3 class="title">Multi-Agent Research Discussion</h3>
+        <div class="nes-field">
+            <label for="researchQuestion">Research Topic:</label>
+            <input type="text" id="researchQuestion" class="nes-input" placeholder="Enter your research topic">
+        </div>
+        <button id="startResearch" class="nes-btn is-primary">Start Research Discussion</button>
+        
+        <div id="sandbox"></div>
+        
+        <div class="nes-container with-title">
+            <h3 class="title">Discussion Notes</h3>
+            <div id="notes"></div>
+        </div>
+
+        <div id="userInput" class="nes-field">
+            <label for="userMessage">Your Input:</label>
+            <input type="text" id="userMessage" class="nes-input" placeholder="Type your message">
+            <button id="sendUserMessage" class="nes-btn is-primary">Send</button>
+        </div>
+    </div>
+
+    <div class="nes-container with-title">
+        <h3 class="title">Groq API Configuration</h3>
+        <div class="nes-field">
+            <label for="apiKey">Groq API Key:</label>
+            <input type="password" id="apiKey" class="nes-input" placeholder="Enter your Groq API key">
+        </div>
+        <button id="saveConfig" class="nes-btn is-primary">Save Configuration</button>
+    </div>
+
+    <div class="nes-container with-title">
+        <h3 class="title">Text Size Control</h3>
+        <div id="textSizeControl">
+            <label for="textSize">Adjust Text Size:</label>
+            <input type="range" id="textSize" min="12" max="24" value="16" class="nes-progress">
+            <span id="textSizeValue">16px</span>
+        </div>
+    </div>
+
+    <script>
+        const emojis = ['🤓', '🧐', '🤔', '🤯', '🎬'];
+        const sandbox = document.getElementById('sandbox');
+        const notes = document.getElementById('notes');
+        let agents = [];
+        let director;
+        let discussionActive = false;
+        let conversationHistory = [];
+        let voices = [];
+
+        function createAgentSection(name, role, emoji, index) {
+            const section = document.createElement('div');
+            section.className = 'agent-section';
+            
+            const agent = document.createElement('div');
+            agent.className = 'agent';
+            agent.textContent = emoji;
+            
+            const agentInfo = document.createElement('div');
+            agentInfo.className = 'agent-info';
+            agentInfo.textContent = `${name} (${role})`;
+            
+            const chatBubble = document.createElement('div');
+            chatBubble.className = 'chat-bubble';
+            
+            section.appendChild(agent);
+            section.appendChild(agentInfo);
+            section.appendChild(chatBubble);
+            sandbox.appendChild(section);
+            
+            return { name, role, chatBubble, section };
+        }
+
+        function createDirectorSection() {
+            const section = document.createElement('div');
+            section.className = 'agent-section director-section';
+            
+            const agent = document.createElement('div');
+            agent.className = 'agent';
+            agent.textContent = '🎬';
+            
+            const agentInfo = document.createElement('div');
+            agentInfo.className = 'agent-info';
+            agentInfo.textContent = 'Director';
+            
+            const chatBubble = document.createElement('div');
+            chatBubble.className = 'chat-bubble';
+            chatBubble.style.height = '510px';
+            
+            section.appendChild(agent);
+            section.appendChild(agentInfo);
+            section.appendChild(chatBubble);
+            sandbox.appendChild(section);
+            
+            return { name: 'Director', role: 'Discussion Leader', chatBubble, section };
+        }
+
+        async function generateAgents() {
+            const researchQuestion = document.getElementById('researchQuestion').value;
+            if (!researchQuestion) {
+                alert('Please enter a research topic.');
+                return;
+            }
+
+            sandbox.innerHTML = '';
+            notes.innerHTML = '';
+            agents = [];
+            conversationHistory = [];
+            
+            const expertRoles = [
+                'AI Researcher',
+                'Data Scientist',
+                'Ethicist',
+                'Technology Journalist'
+            ];
+            
+            expertRoles.forEach((role, index) => {
+                const name = `Expert ${index + 1}`;
+                agents.push(createAgentSection(name, role, emojis[index], index));
+            });
+
+            director = createDirectorSection();
+
+            discussionActive = true;
+            simulateConversation(researchQuestion);
+        }
+
+        async function simulateConversation(topic) {
+            conversationHistory.push(`Research Topic: "${topic}"`);
+
+            let directorPrompt = `You are the director of a research discussion on the topic: "${topic}". Your role is to guide the conversation between four experts: ${agents.map(a => a.role).join(', ')}. Start by introducing the topic and asking the first expert a question to begin the discussion. Keep your response under 25 words.`;
+
+            while (discussionActive) {
+                await speakAgent(director, directorPrompt);
+
+                for (let i = 0; i < agents.length; i++) {
+                    const agent = agents[i];
+                    const recentMessages = conversationHistory.slice(-3).join('\n');
+                    const agentPrompt = `You are a ${agent.role} in a research discussion. Recent messages:\n${recentMessages}\n\nRespond to the ongoing discussion in 20 words or less.`;
+                    
+                    await speakAgent(agent, agentPrompt);
+                }
+
+                directorPrompt = `Based on the ongoing discussion, provide a new direction or question to guide the conversation further. Consider the inputs from all experts and keep the discussion focused on the main topic: "${topic}". Keep your response under 25 words.`;
+            }
+        }
+
+        async function speakAgent(agent, prompt) {
+            agent.section.classList.add('speaking');
+            const response = await callGroqAPI(prompt);
+            agent.chatBubble.textContent = response;
+            conversationHistory.push(`${agent.role}: ${response}`);
+            await updateNotes();
+            
+            return new Promise((resolve) => {
+                speak(response, agents.indexOf(agent), () => {
+                    agent.section.classList.remove('speaking');
+                    resolve();
+                });
+            });
+        }
+
+        async function callGroqAPI(prompt) {
+            const apiKey = localStorage.getItem('groqApiKey');
+            if (!apiKey) {
+                throw new Error('Groq API key not found. Please set it in the configuration.');
+            }
+
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'llama3-8b-8192',
+                    messages: [{ role: 'user', content: prompt }],
+                    max_tokens: 50
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        }
+
+        async function updateNotes() {
+            notes.textContent = conversationHistory.join('\n\n');
+            notes.scrollTop = notes.scrollHeight;
+        }
+
+        function speak(text, index, onEnd) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            if (voices.length > 0) {
+                utterance.voice = voices[index % voices.length];
+            }
+            utterance.onend = onEnd;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        document.getElementById('saveConfig').addEventListener('click', () => {
+            const apiKey = document.getElementById('apiKey').value;
+            if (apiKey) {
+                localStorage.setItem('groqApiKey', apiKey);
+                alert('Groq API key saved!');
+            } else {
+                alert('Please enter a valid API key.');
+            }
+        });
+
+        document.getElementById('startResearch').addEventListener('click', generateAgents);
+
+        document.getElementById('sendUserMessage').addEventListener('click', async () => {
+            const userMessage = document.getElementById('userMessage').value;
+            if (userMessage && discussionActive) {
+                conversationHistory.push(`User: ${userMessage}`);
+                await updateNotes();
+                document.getElementById('userMessage').value = '';
+            }
+        });
+
+        const textSizeSlider = document.getElementById('textSize');
+        const textSizeValue = document.getElementById('textSizeValue');
+
+        textSizeSlider.addEventListener('input', () => {
+            const size = textSizeSlider.value;
+            document.querySelectorAll('.chat-bubble, #notes').forEach(el => {
+                el.style.fontSize = `${size}px`;
+            });
+            textSizeValue.textContent = `${size}px`;
+        });
+
+        window.addEventListener('load', () => {
+            const savedApiKey = localStorage.getItem('groqApiKey');
+            if (savedApiKey) {
+                document.getElementById('apiKey').value = savedApiKey;
+            }
+        });
+
+        // Initialize speech synthesis voices
+        function loadVoices() {
+            voices = window.speechSynthesis.getVoices();
+        }
+
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        loadVoices();
+    </script>
+</body>
+</html>
